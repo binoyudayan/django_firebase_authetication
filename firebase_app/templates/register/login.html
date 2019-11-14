@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Login</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  </head>
+  <body>
+    <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-app.js"></script>
+
+  <!-- If you enabled Analytics in your project, add the Firebase SDK for Analytics -->
+  <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-analytics.js"></script>
+
+  <!-- Add Firebase products that you want to use -->
+  <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-firestore.js"></script>
+  <script src="https://cdn.firebase.com/libs/firebaseui/4.2.0/firebaseui.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/4.2.0/firebaseui.css" />
+  <script type="text/javascript">
+    // Your web app's Firebase configuration
+
+    // Initialize Firebase
+    firebase.initializeApp({{ firebaseConfig|safe }});
+    // firebase.analytics();
+    //firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+    firebase.auth().languageCode = 'de';
+    // FirebaseUI config.
+     var uiConfig = {
+       signInSuccessUrl: '/',
+       signInOptions: [
+         // Leave the lines as is for the providers you want to offer your users.
+         firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+         firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+         firebase.auth.EmailAuthProvider.PROVIDER_ID,
+         firebase.auth.PhoneAuthProvider.PROVIDER_ID,
+       ],
+       // tosUrl and privacyPolicyUrl accept either url string or a callback
+       // function.
+       // Terms of service url/callback.
+       tosUrl: '/',
+       // Privacy policy url/callback.
+       privacyPolicyUrl: function() {
+         window.location.assign('<your-privacy-policy-url>');
+       }
+     };
+
+     // Initialize the FirebaseUI Widget using Firebase.
+     var ui = new firebaseui.auth.AuthUI(firebase.auth());
+     // The start method will wait until the DOM is loaded.
+     ui.start('#firebaseui-auth-container', uiConfig);
+  </script>
+ <div class="container align-self-center position-relative border shadow">
+   <h1 class="text-center">Welcome</h1>
+   {% csrf_token %}
+   <div id="firebaseui-auth-container"></div>
+   <script type="text/javascript">
+     function postIdTokenToSessionLogin(token){
+       $.ajax({
+         type: "POST",
+         headers: { "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val() },
+         url: '/login_view/',
+         data: {
+           'token': token
+         },
+         success: function(data){
+           window.location.assign('/');
+         },
+         error: function(XMLHttpRequest, textStatus, errorThrown) {
+           console.log(textStatus, errorThrown);
+         },
+       });
+     }
+     firebase.auth().onAuthStateChanged(function(user) {
+       if (user) {
+         firebase.auth().currentUser.getIdToken(true).then(function(idToken){
+           console.log(idToken);
+           postIdTokenToSessionLogin(idToken);
+           firebase.auth().signOut();
+         });
+       } else {
+         console.log("not logged");
+       }
+     });
+   </script>
+ </div>
+  </body>
+</html>
