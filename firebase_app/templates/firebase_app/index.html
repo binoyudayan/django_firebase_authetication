@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    {{ request.user.name }}, {{ request.user.is_authenticated }}
+    <a href="{% url 'firebase_app:logout' %}">Logout</a>
+  </body>
+</html>
