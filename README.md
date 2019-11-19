@@ -8,15 +8,15 @@ The main objective of this project is to not have User model. And directly use f
   1. Create a django project and the repository inside that <br>
   2. Install all the dependencies using requirements.txt <br>
   3. Add the application in INSTALLED_APPS. <code>django.contrib.admin</code> and <code>django.contrib.auth.middleware.AuthenticationMiddleware</code> can be commented.<br>
-  4. Add <code>FIREBASE_PRIVATEKEY_FILE</code> to settings with path of Admin sdk private key json file
+  4. Add <code>FIREBASE_PRIVATEKEY_FILE</code> to settings with path of Admin sdk private key json file <br>
   5. Add <code>firebase_app.middleware.FirebaseAuthenticationMiddleware</code> to <code>MIDDLEWARE</code> after sessions middleware<br>
   <code>
-  MIDDLEWARE = [
-    ...,
-    'firebase_app.middleware.FirebaseAuthenticationMiddleware',
-    ...
-  ]
-  </code>
+  MIDDLEWARE = [<br>
+    ...,<br>
+    'firebase_app.middleware.FirebaseAuthenticationMiddleware',<br>
+    ...<br>
+  ]<br>
+  </code><br>
   6. Copy firebase app config json files to the app if you would like use the example in views.py<br>
 
 We can make it as a reusable project with middleware for firebase authentication with django without Django user models, permissions etc. At the moment, the app has only three views login and logout and a home. Login and logout can be reusabe and the logic in home view can be moved to middleware process response.
