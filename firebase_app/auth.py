@@ -8,6 +8,8 @@ from django.conf import settings
 from django.middleware.csrf import rotate_token
 from django.utils.crypto import salted_hmac, constant_time_compare
 
+from .models import User
+
 
 cred = credentials.Certificate(settings.FIREBASE_PRIVATEKEY_FILE)
 firebase_admin.initialize_app(cred)
@@ -17,23 +19,7 @@ FIREBASE_SESSION_COOKIES = 'firebase_session_cookies'
 USER_SESSION_HASH = 'user_hash'
 
 
-class User:
-    """
-    Temporary user object have user attributes(mainly 'is_authenticated' for now).
-    TODO: additional attributes and methods can be added.
-    """
-    is_authenticated = False
-    is_anonymous = True
-    
-    def set_attributes(self, attr_dict):
-        self.is_anonymous = False
-        self.is_authenticated = True
-        try:
-            self.name = attr_dict['name']
-        except KeyError:
-            # There is not name for phone number auth
-            self.name = ""
-        
+       
         
 def generate_user_session_hash(session_cookies):
     key_salt = "django_firebase_authentication"
@@ -53,6 +39,7 @@ def login(request, id_token):
     except (auth.RevokedIdTokenError, auth.InvalidIdTokenError):
         return
     
+    print(decoded_token)
     if FIREBASE_USER in request.session:
         if request.session[FIREBASE_USER]['uid'] != decoded_token['uid']:
             # avoid reusing another user session
