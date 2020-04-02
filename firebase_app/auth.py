@@ -6,18 +6,16 @@ from firebase_admin import auth
 
 from django.conf import settings
 from django.middleware.csrf import rotate_token
-from django.utils.crypto import salted_hmac, constant_time_compare
+from django.utils.crypto import salted_hmac
 
-from .models import User
+from common_utils.utils import wait_for_doc
+from firebase_authentication import *
+from firebase_authentication.functions import update_profile
+from .firestore_documents import User
 
 
-cred = credentials.Certificate(settings.FIREBASE_PRIVATEKEY_FILE)
-firebase_admin.initialize_app(cred)
-
-FIREBASE_USER = 'firebase_user'
-FIREBASE_SESSION_COOKIES = 'firebase_session_cookies'
-USER_SESSION_HASH = 'user_hash'
-
+class AuthenticationError(Exception): 
+    pass
 
        
         
@@ -39,18 +37,34 @@ def login(request, id_token):
     except (auth.RevokedIdTokenError, auth.InvalidIdTokenError):
         return
     
-    print(decoded_token)
+                    
+    if not decoded_token.get('email_verified'):
+        logger.debug("login: email not verified.")
+        raise AuthenticationError("email not verified") 
+    
     if FIREBASE_USER in request.session:
         if request.session[FIREBASE_USER]['uid'] != decoded_token['uid']:
             # avoid reusing another user session
             request.session.flush()
     else:
         request.session.cycle_key()
-        
-    session_cookies = auth.create_session_cookie(id_token, expires_in=datetime.timedelta(days=7))
+
+    logger.debug("login: check session completed")
+    # session validity is set to id token validity, so that cloud function
+    # calls wont due to authentication (401 error)
+    session_cookies = auth.create_session_cookie(id_token, expires_in=datetime.timedelta(hours=1))
+    logger.debug("login: cookie created")
+    
     request.session[FIREBASE_SESSION_COOKIES] = session_cookies
-    request.session[FIREBASE_USER] = decoded_token
-    # request.session[USER_SESSION_HASH] = generate_user_session_hash(session_cookies)
+    request.session[USER_TOKEN] = id_token
+    update_user_attr(request, decoded_token)
+    
+    profile_doc = firestore_db.collection(u'users').document(decoded_token['uid'])
+    logger.debug("login: Get profile doc") # no uids in log 
+    profile = wait_for_doc(profile_doc).to_dict()
+    logger.debug("login: Got profile data")
+        
+    request.session[FIREBASE_USER].update(profile)
     request.session.modified = True
     rotate_token(request)
     
@@ -63,6 +77,16 @@ def logout(request):
     """
     Remove the user session data and make the user to unauthenticated user.
     """
+    if save:
+        # save changes in profile before logout if valid session
+        request.user.save(request)
+    
+    try:
+        decoded_claims = auth.verify_session_cookie(request.session[FIREBASE_SESSION_COOKIES])
+        auth.revoke_refresh_tokens(decoded_claims['sub'])
+    except auth.InvalidSessionCookieError:
+        pass
+    
     request.session.flush()
     request.user = User()
     
